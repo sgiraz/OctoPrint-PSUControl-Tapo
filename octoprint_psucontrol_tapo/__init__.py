@@ -7,19 +7,26 @@ __license__ = "GNU Affero General Public License http://www.gnu.org/licenses/agp
 __copyright__ = "Copyright (C) 2022 Dennis Schwerdel - Released under terms of the AGPLv3 License"
 
 import octoprint.plugin
-from .tapo import P100
+from .tapo import P100, Device
 from . import tapo
+import flask
 
-class PSUControl_Tapo(octoprint.plugin.StartupPlugin,
-                      octoprint.plugin.RestartNeedingPlugin,
+class PSUControl_Tapo(octoprint.plugin.SettingsPlugin,
+                      octoprint.plugin.AssetPlugin,
                       octoprint.plugin.TemplatePlugin,
-                      octoprint.plugin.SettingsPlugin):
+                      octoprint.plugin.SimpleApiPlugin,
+                      octoprint.plugin.StartupPlugin,
+                      octoprint.plugin.RestartNeedingPlugin):
 
     def __init__(self):
         self.config = dict()
         self.device = None
         self.last_status = None
 
+    def get_assets(self):
+        return dict(
+            js=["js/psucontrol_tapo.js"]
+        )
 
     def get_settings_defaults(self):
         return dict(
@@ -130,6 +137,54 @@ class PSUControl_Tapo(octoprint.plugin.StartupPlugin,
         return [
             dict(type="settings", custom_bindings=False)
         ]
+
+    def get_api_commands(self):
+        return dict(
+            discover_children=["address", "username", "password"]
+        )
+
+    def on_api_command(self, command, data):
+        if command == "discover_children":
+            address = data.get("address", "").strip()
+            username = data.get("username", "").strip()
+            password = data.get("password", "").strip()
+
+            if not address or not username or not password:
+                return flask.jsonify({
+                    "success": False,
+                    "error": "Address, username and password are required"
+                })
+
+            try:
+                # Create a temporary device to discover children
+                temp_device = Device(address, username, password)
+                children = temp_device.get_child_devices()
+
+                if not children:
+                    # Check if it's a single socket device
+                    try:
+                        info = temp_device._get_device_info()
+                        return flask.jsonify({
+                            "success": True,
+                            "children": [],
+                            "message": f"Device {info.get('model', 'unknown')} is a single socket device. Terminal ID not required."
+                        })
+                    except:
+                        return flask.jsonify({
+                            "success": False,
+                            "error": "Could not connect to device. Check address and credentials."
+                        })
+
+                return flask.jsonify({
+                    "success": True,
+                    "children": children
+                })
+            except Exception as e:
+                self._logger.exception("Failed to discover children")
+                return flask.jsonify({
+                    "success": False,
+                    "error": str(e)
+                })
 
 
     def get_update_information(self):

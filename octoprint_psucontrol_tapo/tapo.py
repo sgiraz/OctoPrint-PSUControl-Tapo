@@ -265,7 +265,7 @@ class Device:
         for protocol_class in [NewProtocol, OldProtocol]:
             if not self.protocol:
                 try:
-                    # NewProtocol non accetta kwargs, OldProtocol sì
+                    # NewProtocol doesn't accept kwargs, OldProtocol does
                     if protocol_class == NewProtocol:
                         protocol = protocol_class(self.address, self.username, self.password)
                     else:
@@ -281,21 +281,21 @@ class Device:
         if not self.protocol:
             self._initialize()
         
-        # Se terminal_id è presente, usa il wrapper control_child per P300/P115
+        # If terminal_id is present, use control_child wrapper for P300/P115
         if self.terminal_id:
-            # Costruisci la richiesta per il child device
+            # Build the request for the child device
             child_request = {"method": method}
             if params is not None:
                 child_request["params"] = params
             
-            # Wrappa in control_child
+            # Wrap in control_child
             control_params = {
                 "device_id": self.terminal_id,
                 "requestData": child_request
             }
             result = self.protocol._request("control_child", control_params)
             
-            # Estrai il risultato dal responseData
+            # Extract result from responseData
             if result and "responseData" in result:
                 response_data = result["responseData"]
                 if response_data.get("error_code", 0) != 0:
@@ -309,7 +309,40 @@ class Device:
         return self.request("get_device_info")
 
     def _set_device_info(self, params: dict):
-        return self.request("set_device_info", params)        
+        return self.request("set_device_info", params)
+
+    def get_child_devices(self) -> list:
+        """Get list of child devices (sockets) for power strips like P300.
+        Returns a list of dicts with 'device_id' and 'nickname' keys.
+        Returns empty list for single socket devices."""
+        if not self.protocol:
+            self._initialize()
+        try:
+            result = self.protocol._request("get_child_device_list")
+            if result and "child_device_list" in result:
+                children = []
+                for child in result["child_device_list"]:
+                    # Decode base64 nickname if present
+                    nickname = child.get("nickname", "")
+                    if nickname:
+                        try:
+                            import base64
+                            nickname = base64.b64decode(nickname).decode("utf-8")
+                        except:
+                            pass
+                    children.append({
+                        "device_id": child.get("device_id", ""),
+                        "nickname": nickname,
+                        "position": child.get("position", 0),
+                        "device_on": child.get("device_on", False)
+                    })
+                # Sort by position
+                children.sort(key=lambda x: x.get("position", 0))
+                return children
+            return []
+        except Exception as e:
+            log.debug(f"get_child_devices failed (device may be single socket): {e}")
+            return []        
 
     def get_type(self) -> str:
         return self._get_device_info()["model"]

@@ -5,28 +5,51 @@
 <form class="form-horizontal">
     <h4>General</h4>
     <div class="control-group">
-        <label class="control-label">Address</label>
+        <label class="control-label">{{ _('Address') }}</label>
         <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.plugins.psucontrol_tapo.address" placeholder="p100">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_tapo.address" placeholder="192.168.1.100">
         </div>
     </div>
     <div class="control-group">
-        <label class="control-label">Username</label>
+        <label class="control-label">{{ _('Username') }}</label>
         <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.plugins.psucontrol_tapo.username" placeholder="">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.psucontrol_tapo.username" placeholder="email@example.com">
         </div>
     </div>
     <div class="control-group">
-        <label class="control-label">Password</label>
+        <label class="control-label">{{ _('Password') }}</label>
         <div class="controls">
-            <input type="password" class="input" data-bind="value: settings.plugins.psucontrol_tapo.password" placeholder="">
+            <input type="password" class="input-block-level" data-bind="value: settings.plugins.psucontrol_tapo.password" placeholder="">
         </div>
     </div>
+
+    <h4>{{ _('Power Strip Configuration (P300, P115)') }}</h4>
+    <p class="muted">{{ _('For power strips with multiple sockets, click "Find Sockets" to discover and select which socket to control.') }}</p>
+    
     <div class="control-group">
-        <label class="control-label">Terminal ID</label>
+        <label class="control-label">{{ _('Socket') }}</label>
         <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.plugins.psucontrol_tapo.terminalId" placeholder="">
-            <span class="help-inline">Necessario per dispositivi multipresa come P300. Lasciare vuoto per prese singole.</span>
+            <button type="button" class="btn" id="psucontrol_tapo_discover_btn">
+                <i class="fas fa-search"></i> {{ _('Find Sockets') }}
+            </button>
+            <span id="psucontrol_tapo_discover_status" class="help-inline"></span>
+        </div>
+    </div>
+    
+    <div class="control-group" id="psucontrol_tapo_socket_group" style="display: none;">
+        <label class="control-label">{{ _('Available Sockets') }}</label>
+        <div class="controls">
+            <select class="input-block-level" id="psucontrol_tapo_socket_select">
+                <option value="">-- {{ _('Select a socket') }} --</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="control-group" id="psucontrol_tapo_selected_group" style="display: none;">
+        <label class="control-label">{{ _('Selected Socket') }}</label>
+        <div class="controls">
+            <span id="psucontrol_tapo_selected_name" class="label label-info"></span>
+            <input type="hidden" data-bind="value: settings.plugins.psucontrol_tapo.terminalId">
         </div>
     </div>
 </form>
