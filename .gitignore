@@ -2,3 +2,7 @@ OctoPrint_*.egg-info
 .idea
 *.swp
 __pycache__
+# Local test files
+test_*.py
+tapo.key
+venv/

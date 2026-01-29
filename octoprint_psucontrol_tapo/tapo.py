@@ -253,10 +253,11 @@ class OldProtocol:
 
 
 class Device:
-    def __init__(self, address: str, username: str, password: str, **kwargs):
+    def __init__(self, address: str, username: str, password: str, terminal_id = None, **kwargs):
         self.address = address
         self.username = username
         self.password = password
+        self.terminal_id = terminal_id
         self.kwargs = kwargs
         self.protocol = None
 
@@ -264,7 +265,11 @@ class Device:
         for protocol_class in [NewProtocol, OldProtocol]:
             if not self.protocol:
                 try:
-                    protocol = protocol_class(self.address, self.username, self.password, **self.kwargs)
+                    # NewProtocol non accetta kwargs, OldProtocol sì
+                    if protocol_class == NewProtocol:
+                        protocol = protocol_class(self.address, self.username, self.password)
+                    else:
+                        protocol = protocol_class(self.address, self.username, self.password, **self.kwargs)
                     protocol._initialize()
                     self.protocol = protocol
                 except:
@@ -275,6 +280,29 @@ class Device:
     def request(self, method: str, params: dict = None):
         if not self.protocol:
             self._initialize()
+        
+        # Se terminal_id è presente, usa il wrapper control_child per P300/P115
+        if self.terminal_id:
+            # Costruisci la richiesta per il child device
+            child_request = {"method": method}
+            if params is not None:
+                child_request["params"] = params
+            
+            # Wrappa in control_child
+            control_params = {
+                "device_id": self.terminal_id,
+                "requestData": child_request
+            }
+            result = self.protocol._request("control_child", control_params)
+            
+            # Estrai il risultato dal responseData
+            if result and "responseData" in result:
+                response_data = result["responseData"]
+                if response_data.get("error_code", 0) != 0:
+                    raise Exception(f"Child device error: {response_data.get('error_code')}")
+                return response_data.get("result")
+            return result
+        
         return self.protocol._request(method, params)
 
     def _get_device_info(self):

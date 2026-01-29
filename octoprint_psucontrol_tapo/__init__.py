@@ -25,7 +25,8 @@ class PSUControl_Tapo(octoprint.plugin.StartupPlugin,
         return dict(
             address = '',
             username = '',
-            password = ''
+            password = '',
+            terminalId = ''
         )
 
 
@@ -48,7 +49,8 @@ class PSUControl_Tapo(octoprint.plugin.StartupPlugin,
 
     def _reconnect(self):
         self._logger.info(f"Connecting to Tapo device at {self.config['address']}")
-        self.device = P100(self.config["address"], self.config["username"], self.config["password"])
+        terminal_id = self.config.get("terminalId", "").strip() or None
+        self.device = P100(self.config["address"], self.config["username"], self.config["password"], terminal_id=terminal_id)
 
     def reload_settings(self):
         for k, v in self.get_settings_defaults().items():
